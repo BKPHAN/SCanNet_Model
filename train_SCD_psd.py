@@ -2,13 +2,13 @@ import copy
 import os
 import time
 
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 import numpy as np
 import torch.autograd
 import torch.nn as nn
 import torch.nn.functional as F
 from skimage import io
 from tensorboardX import SummaryWriter
-from torch import optim
 from torch.utils.data import DataLoader
 
 working_path = os.path.dirname(os.path.abspath(__file__))
@@ -30,9 +30,9 @@ DATA_NAME = 'ST'
 args = {
     'train_batch_size': 4,
     'val_batch_size': 8,
-    'lr': 0.1,
+    'lr': 1e-4,
     'gpu': True,
-    'epochs': 10,  # lan 1: 11, lan 2: 20, lan 3: 20
+    'epochs': 50,  # lan 1: 11, lan 2: 20, lan 3: 20
     'lr_decay_power': 1.5,
     'psd_train': True,
     'psd_TTA': True,
@@ -45,7 +45,7 @@ args = {
     'chkpt_dir': os.path.join(working_path, 'checkpoints', DATA_NAME),
     'log_dir': os.path.join(working_path, 'logs', DATA_NAME, NET_NAME),
     'load_path': os.path.join(working_path, 'checkpoints', DATA_NAME,
-                              'SCanNet_psd_36e_mIoU68.63_Sek14.77_Fscd60.13_OA86.56_Loss0.44.pth')
+                              'SCanNet_psd_4e_mIoU75.15_Sek26.46_Fscd69.25_OA89.40_Loss0.37.pth')
 }
 ###############################################
 
@@ -108,14 +108,20 @@ def main():
     val_loader = DataLoader(val_set, batch_size=args['val_batch_size'], shuffle=False)
 
     criterion = CrossEntropyLoss2d(ignore_index=0).cuda()
-    optimizer = optim.SGD(filter(lambda p: p.requires_grad, net.parameters()), lr=args['lr'], weight_decay=5e-4,
-                          momentum=0.9, nesterov=True)
-    # optimizer = optim.AdamW(filter(lambda p: p.requires_grad, net.parameters()),
-    #                         lr=args['lr'],
-    #                         weight_decay=5e-4)
+    optimizer = torch.optim.NAdam(filter(lambda p: p.requires_grad, net.parameters()), lr=args['lr'], weight_decay=1e-4)
+
+    # optimizer = torch.optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=args['lr'],
+    #                                 weight_decay=1e-4, momentum=0.9)
+    # optimizer = optim.SGD(filter(lambda p: p.requires_grad, net.parameters()), lr=args['lr'], weight_decay=1e-4,
+    #                       momentum=0.9, nesterov=True)
+    # optimizer = optim.AdamW(
+    #     filter(lambda p: p.requires_grad, net.parameters()),
+    #     lr=args['lr'],  # Learning rate
+    #     weight_decay=1e-4  # Weight decay
+    # )
     # optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()),
     #                        lr=args['lr'],
-    #                        weight_decay=5e-4)
+    #                        weight_decay=1e-4)
     # optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=args['lr'], betas=(0.9, 0.999))
     curr_epoch = 0
     bestFscdV = 0
@@ -124,7 +130,7 @@ def main():
     print('Training finished.')
 
 
-#  training tiep từ path weight file da co
+# training tiep từ path weight file da co
 # def main():
 #     net = Net(3, num_classes=RS.num_classes).cuda()
 #
@@ -135,9 +141,13 @@ def main():
 #     # Create optimizer
 #     # optimizer = optim.SGD(filter(lambda p: p.requires_grad, net.parameters()), lr=args['lr'], weight_decay=5e-4,
 #     #                       momentum=0.9, nesterov=True)
-#     optimizer = optim.AdamW(filter(lambda p: p.requires_grad, net.parameters()),
-#                             lr=args['lr'],
-#                             weight_decay=5e-4)
+#     # optimizer = optim.AdamW(
+#     #     filter(lambda p: p.requires_grad, net.parameters()),
+#     #     lr=args['lr'],  # Learning rate
+#     #     weight_decay=1e-4)  # Weight decay
+#     optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()),
+#                            lr=args['lr'],
+#                            weight_decay=1e-4)
 #
 #     # Load optimizer state
 #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
